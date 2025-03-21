@@ -1,14 +1,14 @@
-import pandas as pd 
-import pygad
-import numpy as np
+import pandas as pd  # type: ignore
+import pygad # type: ignore
+import numpy as np # type: ignore
 import time
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from sklearn.metrics import pairwise_distances 
-from pydantic import BaseModel, ValidationError
-from pyngrok import ngrok
-import uvicorn
+from fastapi import FastAPI, HTTPException, Request # type: ignore
+from fastapi.exceptions import RequestValidationError # type: ignore
+from fastapi.responses import JSONResponse  # type: ignore
+from sklearn.metrics import pairwise_distances  # type: ignore
+from pydantic import BaseModel, ValidationError # type: ignore
+from pyngrok import ngrok # type: ignore
+import uvicorn # type: ignore
 import json
 
 #Instalar FastAPI
