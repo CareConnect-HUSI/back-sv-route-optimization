@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError # type: ignore
 from pyngrok import ngrok # type: ignore
 import uvicorn # type: ignore
 import json
+from typing import Optional
 
 #Instalar FastAPI
 # %pip install fastapi
@@ -281,6 +282,8 @@ class InputData(BaseModel):
     tiempoAtencion: list
     tipoTurno: float
     numMaxEnfermeras: int
+    ids: Optional[list] = None  # Hacer conjunto opcional
+    horaInicio: Optional[float] = None  # Hacer conjunto opcional
 
 app = FastAPI()
 
@@ -334,7 +337,7 @@ def rutas(datos: InputData):
       tiempoMaximoSelec = 11
 
     # Llamar a la función principal con los datos recibidos
-    resultados = principal(tiempoMaximoSelec, datos.numMaxEnfermeras, matrizDistancias, matrizVentanaTiempo, tiempoAtencion)
+    resultados = principal(tiempoMaximoSelec, numMaxEnfermeras, matrizDistancias, matrizVentanaTiempo, tiempoAtencion)
 
     resultadosGenerales = resultados[0]
     
@@ -343,7 +346,12 @@ def rutas(datos: InputData):
       "resultados": resultadosGenerales.to_dict(orient="records")}
     else:
       # Preparar la respuesta en JSON
-      json_data = {int(sublist[0]): [int(x) for x in sublist] for sublist in resultados[2]}
+      print(resultados[2])
+      if not datos.ids:
+         json_data = {int(sublist[0]): [int(x) for x in sublist] for sublist in resultados[2]}
+      else:
+         listaIds = datos.ids
+         json_data = {listaIds[ruta[0]]: [listaIds[i] for i in ruta] for ruta in resultados[2]}
       return {"resultados_generales": resultadosGenerales.to_dict(orient="records"), "rutas": json_data}
 
   except ValidationError as e:
