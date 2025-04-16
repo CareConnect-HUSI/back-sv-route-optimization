@@ -9,6 +9,7 @@ from sklearn.metrics import pairwise_distances  # type: ignore
 from pydantic import BaseModel, ValidationError # type: ignore
 from pyngrok import ngrok # type: ignore
 import uvicorn # type: ignore
+from datetime import datetime, timedelta
 import json
 from typing import Optional
 
@@ -36,6 +37,7 @@ matrizVentanaTiempo = [[]]
 matrizDistancias = [[]]
 inicioTemprano = 0
 inicioTarde = 1
+horaInicial = datetime.strptime("00:00", "%H:%M").time()
 
 rutasEnfermeras = [[]]
 velPromedio = 20 # Velocidad promedio es 20km/h
@@ -71,7 +73,7 @@ def fitness_func(ga_instance, solution, solution_idx):
 
           tiempoEnfermera += matrizVentanaTiempo[solucionInicial[0]][inicioTemprano] #Tiempo de espera
 
-          tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio
+          #tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio #Tiempo desde la enfermera hasta el paciente, no se tiene en cuenta
           rutaActual.append(solucionInicial[0])
 
           tiempoEnfermera += tiempoAtencion[solucionInicial[0]]
@@ -114,8 +116,16 @@ def fitness_func(ga_instance, solution, solution_idx):
     return fitness
 
 def calcularFO( solution, solution_idx):
+    global horaInicial
+    
     rutasFinales = []
     rutasEnfermeras.clear()
+
+    horasIniciales = []
+    horasIniciales.clear()
+
+    horasFinales = []
+    horasFinales.clear()
 
     tiempoTotal = 0.0
     solucionInicial = solution.copy()
@@ -128,6 +138,8 @@ def calcularFO( solution, solution_idx):
 
     while solucionInicial.size > 0 and len(enfermerasUtilizadas) <= numMaxEnfermeras:
         rutaActual = []
+        horaInicio = []
+        horaFinal = []
         tiempoEsperaEnfermera = 0.0
 
 
@@ -144,17 +156,25 @@ def calcularFO( solution, solution_idx):
           enfermerasUtilizadas.append(fila_ordenada[0][0])
 
           tiempoEnfermera = 0.0
-
-
+          horaActualFloat = horas_a_decimal(horaInicial)
           distanciaEnfermera = 0.0
           rutaActual.append(enfermerasUtilizadas[-1])
+
+          horaActual = decimal_a_horas(horaActualFloat)
+          horaInicio.append(horaActual) #Hora inicio y hora final enfermera
+          horaFinal.append(horaActual) #Hora inicio y hora final enfermera
+          
 
           tiempoEnfermera += matrizVentanaTiempo[solucionInicial[0]][inicioTemprano] #Tiempo de espera
           tiempoEsperaEnfermera += matrizVentanaTiempo[solucionInicial[0]][inicioTemprano]
 
-          tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio
+          horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera  #Se suma el tiempo inicial con el tiempo de espera de la enfermera
+          horaActual = decimal_a_horas(horaActualFloat)
+          horaInicio.append(horaActual) # Se agrega la hora de inicio del primer paciente
+
+          #tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio #Tiempo de recorrido NO SE CUENTA EL TIEMPO DESDE SU CASA AL PRIMER PACIENTE
           distanciaEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]]
-          rutaActual.append(solucionInicial[0])
+          rutaActual.append(solucionInicial[0])  
 
           tiempoEnfermera += tiempoAtencion[solucionInicial[0]]
           solucionInicial = np.delete(solucionInicial,0)
@@ -163,27 +183,65 @@ def calcularFO( solution, solution_idx):
           while tiempoEnfermera < tiempoMaximo and solucionInicial.size > 0:  # Verificamos si hay más pacientes en solucionInicial
             if matrizVentanaTiempo[solucionInicial[0]][inicioTemprano] > tiempoEnfermera:
               if (tiempoEnfermera + (matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio) + tiempoAtencion[solucionInicial[0]])+(matrizVentanaTiempo[solucionInicial[0]][inicioTemprano] - tiempoEnfermera) > tiempoMaximo:
+                horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera  #Se suma el tiempo inicial con el tiempo de recorrido y atención de la enfermera
+                horaActual = decimal_a_horas(horaActualFloat)
+                horaFinal.append(horaActual) # hora final enfermera
                 break
               else:
+                tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio #Tiempo de recorrido
+                horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera
+                horaActual = decimal_a_horas(horaActualFloat)
+                horaFinal.append(horaActual) # hora final enfermera
+
                 tiempoEnfermera += (matrizVentanaTiempo[solucionInicial[0]][inicioTemprano] - tiempoEnfermera) #Tiempo de espera
                 tiempoEsperaEnfermera += (matrizVentanaTiempo[solucionInicial[0]][inicioTemprano] - tiempoEnfermera)
-                tiempoEnfermera += tiempoAtencion[solucionInicial[0]]
-                tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio
+
+                horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera
+                horaActual = decimal_a_horas(horaActualFloat)
+                horaInicio.append(horaActual) # Se agrega la hora de inicio sin contar el tiempo de espera
+
+                tiempoEnfermera += tiempoAtencion[solucionInicial[0]] #Tiempo de atención
                 distanciaEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]]
                 rutaActual.append(solucionInicial[0])
                 solucionInicial = np.delete(solucionInicial,0)
+                if solucionInicial.size == 0:
+                  horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera
+                  horaActual = decimal_a_horas(horaActualFloat)
+                  horaFinal.append(horaActual) # hora final enfermera
+                
             elif matrizVentanaTiempo[solucionInicial[0]][inicioTarde] > tiempoEnfermera:
               if (tiempoEnfermera + (matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio) + tiempoAtencion[solucionInicial[0]]) > tiempoMaximo:
+                horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera  #Se suma el tiempo inicial con el tiempo de recorrido y atención de la enfermera
+                horaActual = decimal_a_horas(horaActualFloat)
+                horaFinal.append(horaActual) # hora final enfermera
                 break
               else:
-                tiempoEnfermera += tiempoAtencion[solucionInicial[0]]
-                tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio
+                tiempoEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]] / velPromedio #Tiempo de recorrido
+
+                horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera  #Se suma el tiempo inicial con el tiempo de recorrido y atención de la enfermera
+                horaActual = decimal_a_horas(horaActualFloat)
+                horaFinal.append(horaActual) # hora final enfermera
+
+                horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera
+                horaActual = decimal_a_horas(horaActualFloat)
+                horaInicio.append(horaActual) # Se agrega la hora de inicio sin contar el tiempo de espera
+
+                tiempoEnfermera += tiempoAtencion[solucionInicial[0]] #Tiempo de atención
                 distanciaEnfermera += matrizDistancias[rutaActual[-1]][solucionInicial[0]]
                 rutaActual.append(solucionInicial[0])
                 solucionInicial = np.delete(solucionInicial,0)
+                if solucionInicial.size == 0:
+                  horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera
+                  horaActual = decimal_a_horas(horaActualFloat)
+                  horaFinal.append(horaActual) # hora final enfermera
             else:
+              horaActualFloat = horas_a_decimal(horaInicial) + tiempoEnfermera  #Se suma el tiempo inicial con el tiempo de recorrido y atención de la enfermera
+              horaActual = decimal_a_horas(horaActualFloat)
+              horaFinal.append(horaActual) # hora final enfermera
               break
-
+          
+          horasIniciales.append(horaInicio) #Se agregan las horas iniciales de la enfermera
+          horasFinales.append(horaFinal) #Se agregan las horas finales de la enfermera
           tiempoTotal += tiempoEnfermera
           rutasEnfermeras.append(rutaActual)
           tiempoEnfermeras.append(tiempoEnfermera)
@@ -196,7 +254,7 @@ def calcularFO( solution, solution_idx):
         fitness = 0.0
     else:
       fitness = 1.0 / (tiempoTotal + 0.0000000001)  # Para evitar división por cero
-    return rutasFinales, tiempoTotal, tiempoEnfermeras, distanciaEnfermeras, tiempoEspera
+    return rutasFinales, tiempoTotal, tiempoEnfermeras, distanciaEnfermeras, tiempoEspera, horasIniciales, horasFinales
 
 
 def principal(tiempoTurnoSelec, numMaxEnfermerasSelec, matrizDistanciasIn, matrizVentanaTiempoIn, tiempoAtencionIn):
@@ -242,7 +300,7 @@ def principal(tiempoTurnoSelec, numMaxEnfermerasSelec, matrizDistanciasIn, matri
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
 
     if solution_fitness > fitnessEvaluar:
-      rutasFinal, tiempoTotal, tiempoEnfermeras, distanciaEnfermeras, tiempoEspera = calcularFO(solution, solution_idx)
+      rutasFinal, tiempoTotal, tiempoEnfermeras, distanciaEnfermeras, tiempoEspera, horasInicio, horasFinal = calcularFO(solution, solution_idx)
       fitnessEvaluar = solution_fitness
   tiempo_fin = time.time()
 
@@ -270,7 +328,19 @@ def principal(tiempoTurnoSelec, numMaxEnfermerasSelec, matrizDistanciasIn, matri
           resultados += f"  Distancia recorrida: {distancia:.2f} km\n"
           resultados += f"  Tiempo Espera: {tiempoEsperaEnfermera:.2f} horas\n"
 
-      return [resultadosGenerales, resultados, rutasFinal]
+      return [resultadosGenerales, resultados, rutasFinal, horasInicio, horasFinal]
+  
+def decimal_a_horas(decimal):
+    horas = int(decimal)
+    minutos = int((decimal - horas) * 60)
+    return f"{horas:02d}:{minutos:02d}"
+
+def horas_a_decimal(horas_str):
+    if not isinstance(horas_str, str):
+        horas_str = horas_str.strftime("%H:%M")  # Convertir datetime.time a string
+
+    horas, minutos = map(int, horas_str.split(":"))
+    return horas + minutos / 60
 
 
 
@@ -283,7 +353,7 @@ class InputData(BaseModel):
     tipoTurno: float
     numMaxEnfermeras: int
     ids: Optional[list] = None  # Hacer conjunto opcional
-    horaInicio: Optional[float] = None  # Hacer conjunto opcional
+    horaInicio: Optional[str] = None  # Hacer conjunto opcional
 
 app = FastAPI()
 
@@ -303,6 +373,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 def rutas(datos: InputData):
 
   try:
+    global horaInicial
+    if datos.horaInicio: 
+       horaInicial = datetime.strptime(datos.horaInicio, "%H:%M").time()
     if not datos.coordenadas:
       raise HTTPException(status_code=400, detail="Las coordenadas son obligatorias.")
     if not datos.matrizVentanaTiempo:
@@ -346,15 +419,37 @@ def rutas(datos: InputData):
       "resultados": resultadosGenerales.to_dict(orient="records")}
     else:
       # Preparar la respuesta en JSON
-      print(resultados[2])
-      if not datos.ids:
-         json_data = {int(sublist[0]): [int(x) for x in sublist] for sublist in resultados[2]}
-      else:
-         listaIds = datos.ids
-         json_data = {listaIds[ruta[0]]: [listaIds[i] for i in ruta] for ruta in resultados[2]}
-      return {"resultados_generales": resultadosGenerales.to_dict(orient="records"), "rutas": json_data}
+      
+      rutas_brutas = resultados[2]
+      horas_inicio = resultados[3]
+      horas_fin = resultados[4]
+      rutas_con_horas = {}
 
+      for idx_ruta, ruta in enumerate(rutas_brutas):
+        ruta_con_horas = []
+        for i, indice_paciente in enumerate(ruta):
+          if not datos.ids:
+            paciente_id = str(indice_paciente)
+          else:
+              paciente_id = datos.ids[indice_paciente]
+
+          entrada = {
+                  "paciente": paciente_id,
+                  "hora_inicio": horas_inicio[idx_ruta][i],
+                  "hora_fin": horas_fin[idx_ruta][i]
+              }
+          ruta_con_horas.append(entrada)
+
+          # Usar el primer paciente de la ruta como clave
+        if ruta_con_horas:
+          rutas_con_horas[ruta_con_horas[0]["paciente"]] = ruta_con_horas
+        else:
+          print(f"Ruta vacía detectada en índice {idx_ruta}: {ruta}")
+      return {
+          "resultados_generales": resultadosGenerales.to_dict(orient="records"),
+          "rutas": rutas_con_horas}
   except ValidationError as e:
+        
         raise HTTPException(status_code=422, detail=f"Error de validación: {str(e)}")
     
   except Exception as e:
