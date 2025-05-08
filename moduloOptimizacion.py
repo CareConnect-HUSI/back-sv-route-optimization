@@ -459,6 +459,6 @@ public_url = ngrok.connect(8000, "http")
 print(f"Web service accesible en: {public_url}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8086)
 
 
