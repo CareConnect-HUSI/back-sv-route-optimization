@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError # type: ignore
 from fastapi.responses import JSONResponse  # type: ignore
 from sklearn.metrics import pairwise_distances  # type: ignore
 from pydantic import BaseModel, ValidationError # type: ignore
+from fastapi.middleware.cors import CORSMiddleware 
 from pyngrok import ngrok # type: ignore
 import uvicorn # type: ignore
 from datetime import datetime, timedelta
@@ -357,6 +358,16 @@ class InputData(BaseModel):
 
 app = FastAPI()
 
+
+# Agrega el middleware de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # Todos
+    allow_credentials=True,       # Permite enviar cookies (si las usas)
+    allow_methods=["*"],          # Permite todos los métodos HTTP (GET, POST, etc.)
+    allow_headers=["*"],          # Permite todas las cabeceras
+)
+
 @app.get("/")
 def home():
     return {"mensaje": "¡Hola, este es un web service para CareConnect!"}
@@ -371,6 +382,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.post("/rutas")
 def rutas(datos: InputData):
+  
+  print(datos)
 
   try:
     global horaInicial
