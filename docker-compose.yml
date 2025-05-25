@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  optimizacion:
+    build: .
+    container_name: optimizacion-service
+    ports:
+      - "8011:8086"  # 8011 para acceder desde fuera, 8086 dentro del contenedor
+    networks:
+      - backend-net
+
+networks:
+  backend-net:
+    external: true
