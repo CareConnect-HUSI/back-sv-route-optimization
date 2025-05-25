@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse  # type: ignore
 from sklearn.metrics import pairwise_distances  # type: ignore
 from pydantic import BaseModel, ValidationError # type: ignore
 from fastapi.middleware.cors import CORSMiddleware 
-from pyngrok import ngrok # type: ignore
 import uvicorn # type: ignore
 from datetime import datetime, timedelta
 import json
