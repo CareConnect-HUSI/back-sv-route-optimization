@@ -25,5 +25,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**4. Iniciar el web service**  
+```bash
+python3 moduloOptimizacion.py
+```
+
 Estos pasos aseguran que el entorno virtual esté correctamente configurado y que todas las dependencias necesarias sean instaladas para ejecutar el proyecto sin problemas.
 
